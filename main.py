@@ -78,6 +78,7 @@ async def start(message: Message):
 
 @dp.message(lambda message: message.text == "📜 Список пород")
 async def list_breeds(message: Message):
+    await message.answer("Подождите минуточку . . .")
     breeds = get_cat_breeds()
     breed_list = "\n".join([f"{breed['name']} / {translator.translate(breed['name'], src='en', dest='ru').text}" for breed in breeds])
     await message.answer(f"Список пород котов:\n\n{breed_list}")
