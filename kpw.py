@@ -24,10 +24,11 @@ def init_breeds_dict():
         breeds_dict[breed['name'].lower()] = {
             "id": breed['id'],
             "en": breed['name'],
-            "ru": translator.translate(breed['name'], src="en", dest="ru").text,
+            # "ru": translator.translate(breed['name'], src="en", dest="ru").text,
             "description": translator.translate(breed['description'], src="en", dest="ru").text,
             "temperament": translator.translate(breed['temperament'], src="en", dest="ru").text,
         }
+    print("Словарь пород успешно инициализирован.")
 
 # NASA APOD
 def get_random_apod():
@@ -61,20 +62,31 @@ async def start(message: types.Message):
 
 @dp.message(lambda message: message.text == "📜 Список пород")
 async def list_breeds(message: types.Message):
-    breed_list = "\n".join([f"{breed['en']} / {breed['ru']}" for breed in breeds_dict.values()])
+    breed_list = "\n".join([f"{breed['en']}" for breed in breeds_dict.values()])
     await message.answer(f"Список пород котов:\n\n{breed_list}")
 
 @dp.message(lambda message: message.text == "🐾 Введите породу")
 async def prompt_breed_input(message: types.Message):
-    await message.answer("Введите название породы на русском или английском языке:")
+    await message.answer("Введите название породы на английском языке:")
 
 @dp.message(lambda message: message.text == "🚀 Космос")
 async def send_random_apod(message: types.Message):
     apod = get_random_apod()
-    photo_url = apod.get('url', 'Нет изображения')
+    photo_url = apod.get('url', '')
     title = apod.get('title', 'Нет названия')
     description = apod.get('explanation', 'Нет описания')
-    await message.answer_photo(photo_url, caption=f"{translate_to_russian(title)}\n\n{translate_to_russian(description)}")
+
+    # Перевод текста
+    translated_title = translate_to_russian(title)
+    translated_description = translate_to_russian(description)
+
+    # Ограничение длины текста
+    if len(translated_description) > 900:
+        translated_description = translated_description[:900] + "..."
+
+    caption = f"{translated_title}\n\n{translated_description}"
+
+    await message.answer_photo(photo_url, caption=caption)
 
 @dp.message(lambda message: message.text == "Факты")
 async def facts_menu_handler(message: types.Message):
@@ -96,6 +108,10 @@ async def handle_fact_request(message: types.Message):
         fact = fetch_fact("random")
         await message.answer(f"Случайный факт:\n{translate_to_russian(fact)}")
         user_facts_state.pop(user_id, None)
+
+@dp.message(lambda message: message.text == "Назад")
+async def go_back(message: types.Message):
+    await message.answer("Вы вернулись в главное меню.", reply_markup=main_menu())
 
 @dp.message(lambda message: message.from_user.id in user_facts_state)
 async def process_fact_input(message: types.Message):
@@ -126,7 +142,7 @@ async def handle_breed_input(message: types.Message):
         response = requests.get(url).json()
         image_url = response[0].get('url', 'Нет изображения') if response else "Нет изображения"
         info = (
-            f"Порода: {breed_info['en']} / {breed_info['ru']}\n"
+            f"Порода: {breed_info['en']}\n"
             f"Описание: {breed_info['description']}\n"
             f"Темперамент: {breed_info['temperament']}"
         )
@@ -136,7 +152,9 @@ async def handle_breed_input(message: types.Message):
 
 async def main():
     print("Бот запущен...")
+    init_breeds_dict()  # Инициализация словаря при запуске
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
